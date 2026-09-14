@@ -18,6 +18,11 @@ Painel de controle Fullstack para análise de prioridade de Issues do GitHub usa
 3. O texto completo (issue + comentários) é enviado pro Gemini, que devolve um JSON estruturado: `resumo`, `prioridade` (1-10) e `justificativa`.
 4. O front-end exibe o resultado no dashboard.
 5. **Opcional, com aprovação manual:** o botão "Postar este resumo como comentário na issue" chama `src/app/api/comment/route.ts`, que publica o resumo formatado como um comentário de verdade na issue via Octokit. Nada é postado automaticamente — só ao clicar.
+6. **Automação total (webhook):** `.github/workflows/auto-triage.yml` dispara sozinho toda vez que uma issue nova é aberta neste repositório — chama o app publicado na Vercel (`/api/analyze` → `/api/comment`) e posta o comentário sem nenhuma intervenção humana. É o ciclo completo: issue aberta → analisada → comentada, tudo automático.
+
+## 🚀 Publicado
+
+O app está no ar em produção via Vercel: **https://ai-issue-buddy.vercel.app**
 
 ## ⚙️ Rodando localmente
 

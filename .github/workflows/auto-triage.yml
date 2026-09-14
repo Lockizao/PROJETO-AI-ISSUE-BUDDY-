@@ -1,0 +1,52 @@
+name: Triagem automática de issue (AI Issue Buddy)
+
+# Dispara sempre que uma issue nova é aberta neste repositório.
+# Chama o próprio AI Issue Buddy (publicado na Vercel) pra analisar
+# a issue e postar o resumo+prioridade como comentário, sem intervenção humana.
+on:
+  issues:
+    types: [opened]
+
+env:
+  APP_URL: https://ai-issue-buddy.vercel.app
+
+jobs:
+  triagem:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Analisar issue com IA
+        id: analise
+        run: |
+          RESPOSTA=$(curl -sS -X POST "$APP_URL/api/analyze" \
+            -H "Content-Type: application/json" \
+            -d "$(jq -n \
+                --arg owner "${{ github.repository_owner }}" \
+                --arg repo "${{ github.event.repository.name }}" \
+                --argjson issue_number "${{ github.event.issue.number }}" \
+                '{owner: $owner, repo: $repo, issue_number: $issue_number}')")
+
+          if echo "$RESPOSTA" | jq -e 'has("erro")' > /dev/null; then
+            echo "Falha ao analisar a issue: $(echo "$RESPOSTA" | jq -r '.erro')"
+            exit 1
+          fi
+
+          # Evita problema com múltiplas linhas ao salvar no output do step
+          {
+            echo "resposta<<EOF_RESPOSTA"
+            echo "$RESPOSTA"
+            echo "EOF_RESPOSTA"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Postar comentário com o resultado
+        run: |
+          curl -sS -X POST "$APP_URL/api/comment" \
+            -H "Content-Type: application/json" \
+            -d "$(jq -n \
+                --arg owner "${{ github.repository_owner }}" \
+                --arg repo "${{ github.event.repository.name }}" \
+                --argjson issue_number "${{ github.event.issue.number }}" \
+                --argjson analise '${{ steps.analise.outputs.resposta }}' \
+                '{owner: $owner, repo: $repo, issue_number: $issue_number,
+                  resumo: $analise.analise.resumo,
+                  prioridade: $analise.analise.prioridade,
+                  justificativa: $analise.analise.justificativa}')"

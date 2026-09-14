@@ -1,76 +1,63 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🤖 AI Issue Buddy
 
-## Getting Started
+Painel de controle Fullstack para análise de prioridade de Issues do GitHub usando Inteligência Artificial. Automatiza a leitura de issues longas (incluindo comentários) e devolve um score de prioridade de 1 a 10 com um resumo executivo.
 
-First, run the development server:
+## 🛠️ Tecnologias
 
+| Categoria | Tecnologia |
+|---|---|
+| Front-End | Next.js 16 (App Router), React, TypeScript, Tailwind CSS |
+| Back-End | Next.js API Route (Node.js), TypeScript |
+| IA | Google Gemini API (`@google/genai`, modelo `gemini-3.5-flash-lite`) |
+| Dados | GitHub API (`@octokit/rest`) |
+
+## 🗺️ Como funciona
+
+1. O front-end (`src/app/page.tsx`) envia `owner`, `repo` e `issue_number` para a API.
+2. A API (`src/app/api/analyze/route.ts`) usa o `GITHUB_PAT` pra buscar a issue e todos os comentários via Octokit.
+3. O texto completo (issue + comentários) é enviado pro Gemini, que devolve um JSON estruturado: `resumo`, `prioridade` (1-10) e `justificativa`.
+4. O front-end exibe o resultado no dashboard.
+
+## ⚙️ Rodando localmente
+
+### Pré-requisitos
+- Node.js e npm
+- Uma chave da [Gemini API](https://aistudio.google.com/apikey) (gratuita)
+- Um [GitHub Personal Access Token](https://github.com/settings/tokens) — um token *fine-grained* com acesso **"Public repositories" (read-only)** já é suficiente, já que o app só lê issues públicas
+
+### Instalação
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Configuração
+Copie `.env.local.example` para `.env.local` e preencha com suas chaves:
+```env
+GEMINI_API_KEY=sua_chave_aqui
+GITHUB_PAT=seu_token_aqui
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details
-
-
-
-
-PORTUGUÊS
-
-
-Este é um projeto Next.js inicializado com create-next-app.
-
-Primeiros Passos
-Primeiro, inicie o servidor de desenvolvimento:
-
-Bash
-
+### Iniciar
+```bash
 npm run dev
-# ou
-yarn dev
-# ou
-pnpm dev
-# ou
-bun dev
-Abra http://localhost:3000 no seu navegador para ver o resultado.
+```
+🌐 Acesse http://localhost:3000
 
-Você pode começar a editar a página modificando app/page.tsx. A página será atualizada automaticamente conforme você edita o arquivo.
+### Testando
+No dashboard, use um exemplo público qualquer, ex:
+- Repositório: `vercel/next.js`
+- Issue: `69229`
 
-Este projeto usa next/font para otimizar e carregar automaticamente Geist, uma nova família de fontes da Vercel.
+## 🔑 API
 
-Saiba Mais
-Para saber mais sobre o Next.js, consulte os seguintes recursos:
-
-Documentação do Next.js - aprenda sobre os recursos e a API do Next.js.
-
-Aprenda Next.js - um tutorial interativo do Next.js.
-
-Você pode conferir o repositório do Next.js no GitHub - seu feedback e contribuições são bem-vindos!
-
-Deploy no Vercel
-A maneira mais fácil de fazer o deploy da sua aplicação Next.js é usar a Plataforma Vercel, dos criadores do Next.js.
-
-Confira nossa documentação de deploy do Next.js para mais detalhes.
+`POST /api/analyze`
+```json
+{ "owner": "vercel", "repo": "next.js", "issue_number": 69229 }
+```
+Resposta:
+```json
+{
+  "issue": { "owner": "vercel", "repo": "next.js", "numero": 69229, "titulo": "...", "totalComentarios": 3 },
+  "analise": { "resumo": "...", "prioridade": 6, "justificativa": "..." }
+}
+```

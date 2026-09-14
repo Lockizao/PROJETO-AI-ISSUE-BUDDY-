@@ -49,4 +49,5 @@ jobs:
                 '{owner: $owner, repo: $repo, issue_number: $issue_number,
                   resumo: $analise.analise.resumo,
                   prioridade: $analise.analise.prioridade,
-                  justificativa: $analise.analise.justificativa}')"
+                  justificativa: $analise.analise.justificativa,
+                  automatico: true}')"

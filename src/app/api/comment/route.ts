@@ -8,11 +8,19 @@ interface CommentRequestBody {
     resumo?: string;
     prioridade?: number;
     justificativa?: string;
+    // true quando quem chamou foi o workflow (.github/workflows/auto-triage.yml),
+    // sem clique humano nenhum. Muda só o texto de rodapé, pra não mentir sobre a origem.
+    automatico?: boolean;
 }
 
 // Monta o corpo do comentário que vai aparecer de verdade na issue do GitHub,
-// deixando claro que foi gerado por IA (transparência com quem lê a issue).
-function montarCorpoComentario(resumo: string, prioridade: number, justificativa: string) {
+// deixando claro que foi gerado por IA (transparência com quem lê a issue)
+// e sendo honesto sobre se um humano aprovou o clique ou se foi 100% automático.
+function montarCorpoComentario(resumo: string, prioridade: number, justificativa: string, automatico: boolean) {
+    const rodape = automatico
+        ? "_Comentário gerado e publicado automaticamente pelo workflow de triagem (sem revisão humana antes de postar). Não substitui a triagem da equipe._"
+        : "_Comentário gerado por IA (Gemini); a publicação foi aprovada manualmente por um humano antes de ser postada. Não substitui a triagem da equipe._";
+
     return [
         "### 🤖 Análise automática — AI Issue Buddy",
         "",
@@ -23,7 +31,7 @@ function montarCorpoComentario(resumo: string, prioridade: number, justificativa
         `**Justificativa:** ${justificativa}`,
         "",
         "---",
-        "_Comentário gerado por IA (Gemini) e publicado manualmente por um humano após revisão. Não substitui a triagem da equipe._",
+        rodape,
     ].join("\n");
 }
 
@@ -47,6 +55,7 @@ export async function POST(request: NextRequest) {
     const { owner, repo, resumo, justificativa } = body;
     const issueNumber = Number(body.issue_number);
     const prioridade = Number(body.prioridade);
+    const automatico = body.automatico === true;
 
     if (!owner || !repo || !issueNumber || Number.isNaN(issueNumber) || !resumo || !justificativa || Number.isNaN(prioridade)) {
         return NextResponse.json(
@@ -62,7 +71,7 @@ export async function POST(request: NextRequest) {
             owner,
             repo,
             issue_number: issueNumber,
-            body: montarCorpoComentario(resumo, prioridade, justificativa),
+            body: montarCorpoComentario(resumo, prioridade, justificativa, automatico),
         });
 
         return NextResponse.json({

@@ -26,6 +26,12 @@ function corPrioridade(nota: number) {
     return "bg-green-500/15 text-green-400 border-green-500/30";
 }
 
+type StatusComentario =
+    | { tipo: "idle" }
+    | { tipo: "enviando" }
+    | { tipo: "sucesso"; url: string }
+    | { tipo: "erro"; mensagem: string };
+
 export default function Home() {
     const [owner, setOwner] = useState("vercel");
     const [repo, setRepo] = useState("next.js");
@@ -33,12 +39,46 @@ export default function Home() {
     const [carregando, setCarregando] = useState(false);
     const [erro, setErro] = useState<string | null>(null);
     const [resultado, setResultado] = useState<AnalyzeResponse | null>(null);
+    const [statusComentario, setStatusComentario] = useState<StatusComentario>({ tipo: "idle" });
+
+    async function handlePostarComentario() {
+        if (!resultado) return;
+
+        setStatusComentario({ tipo: "enviando" });
+
+        try {
+            const res = await fetch("/api/comment", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    owner: resultado.issue.owner,
+                    repo: resultado.issue.repo,
+                    issue_number: resultado.issue.numero,
+                    resumo: resultado.analise.resumo,
+                    prioridade: resultado.analise.prioridade,
+                    justificativa: resultado.analise.justificativa,
+                }),
+            });
+
+            const data = await res.json();
+
+            if (!res.ok) {
+                setStatusComentario({ tipo: "erro", mensagem: data.erro ?? "Erro desconhecido ao postar comentário." });
+                return;
+            }
+
+            setStatusComentario({ tipo: "sucesso", url: data.url });
+        } catch {
+            setStatusComentario({ tipo: "erro", mensagem: "Não foi possível conectar à API." });
+        }
+    }
 
     async function handleSubmit(e: FormEvent) {
         e.preventDefault();
         setCarregando(true);
         setErro(null);
         setResultado(null);
+        setStatusComentario({ tipo: "idle" });
 
         try {
             const res = await fetch("/api/analyze", {
@@ -143,7 +183,36 @@ export default function Home() {
                         </div>
 
                         <p className="text-neutral-200 mb-3">{resultado.analise.resumo}</p>
-                        <p className="text-neutral-400 text-sm">{resultado.analise.justificativa}</p>
+                        <p className="text-neutral-400 text-sm mb-5">{resultado.analise.justificativa}</p>
+
+                        <div className="border-t border-neutral-800 pt-4">
+                            {statusComentario.tipo === "sucesso" ? (
+                                <p className="text-sm text-green-400">
+                                    ✅ Comentário publicado.{" "}
+                                    <a href={statusComentario.url} target="_blank" rel="noreferrer" className="underline">
+                                        Ver na issue ↗
+                                    </a>
+                                </p>
+                            ) : (
+                                <>
+                                    <button
+                                        onClick={handlePostarComentario}
+                                        disabled={statusComentario.tipo === "enviando"}
+                                        className="rounded-md border border-neutral-700 px-4 py-2 text-sm hover:border-neutral-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        {statusComentario.tipo === "enviando"
+                                            ? "Publicando..."
+                                            : "💬 Postar este resumo como comentário na issue"}
+                                    </button>
+                                    {statusComentario.tipo === "erro" && (
+                                        <p className="text-sm text-red-400 mt-2">{statusComentario.mensagem}</p>
+                                    )}
+                                    <p className="text-xs text-neutral-500 mt-2">
+                                        Nada é postado automaticamente — só ao clicar acima.
+                                    </p>
+                                </>
+                            )}
+                        </div>
                     </div>
                 )}
             </div>

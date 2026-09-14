@@ -1,6 +1,6 @@
 # 🤖 AI Issue Buddy
 
-Painel de controle Fullstack para análise de prioridade de Issues do GitHub usando Inteligência Artificial. Automatiza a leitura de issues longas (incluindo comentários) e devolve um score de prioridade de 1 a 10 com um resumo executivo.
+Painel de controle Fullstack para análise de prioridade de Issues do GitHub usando Inteligência Artificial. Automatiza a leitura de issues longas (incluindo comentários), devolve um score de prioridade de 1 a 10 com um resumo executivo, e — com um clique de aprovação — publica esse resumo como comentário real na issue.
 
 ## 🛠️ Tecnologias
 
@@ -17,13 +17,16 @@ Painel de controle Fullstack para análise de prioridade de Issues do GitHub usa
 2. A API (`src/app/api/analyze/route.ts`) usa o `GITHUB_PAT` pra buscar a issue e todos os comentários via Octokit.
 3. O texto completo (issue + comentários) é enviado pro Gemini, que devolve um JSON estruturado: `resumo`, `prioridade` (1-10) e `justificativa`.
 4. O front-end exibe o resultado no dashboard.
+5. **Opcional, com aprovação manual:** o botão "Postar este resumo como comentário na issue" chama `src/app/api/comment/route.ts`, que publica o resumo formatado como um comentário de verdade na issue via Octokit. Nada é postado automaticamente — só ao clicar.
 
 ## ⚙️ Rodando localmente
 
 ### Pré-requisitos
 - Node.js e npm
 - Uma chave da [Gemini API](https://aistudio.google.com/apikey) (gratuita)
-- Um [GitHub Personal Access Token](https://github.com/settings/tokens) — um token *fine-grained* com acesso **"Public repositories" (read-only)** já é suficiente, já que o app só lê issues públicas
+- Um [GitHub Personal Access Token](https://github.com/settings/tokens) fine-grained. Duas opções:
+  - **Só analisar (sem postar comentário):** acesso **"Public repositories" (read-only)** já é suficiente.
+  - **Analisar + postar comentário:** acesso **"Only select repositories"**, selecionando os repositórios onde você quer permitir postar, com a permissão **Issues: Read and write** (Metadata: Read-only vem junto automaticamente). Sem isso, o botão de comentar retorna erro 403 "Resource not accessible by personal access token".
 
 ### Instalação
 ```bash
@@ -60,4 +63,13 @@ Resposta:
   "issue": { "owner": "vercel", "repo": "next.js", "numero": 69229, "titulo": "...", "totalComentarios": 3 },
   "analise": { "resumo": "...", "prioridade": 6, "justificativa": "..." }
 }
+```
+
+`POST /api/comment`
+```json
+{ "owner": "Lockizao", "repo": "meu-repo", "issue_number": 2, "resumo": "...", "prioridade": 1, "justificativa": "..." }
+```
+Resposta:
+```json
+{ "ok": true, "url": "https://github.com/Lockizao/meu-repo/issues/2#issuecomment-..." }
 ```

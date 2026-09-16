@@ -1,68 +1,56 @@
-# 🤖 AI Issue Buddy
+# AI Issue Buddy
 
-Painel de controle Fullstack para análise de prioridade de Issues do GitHub usando Inteligência Artificial. Automatiza a leitura de issues longas (incluindo comentários), devolve um score de prioridade de 1 a 10 com um resumo executivo, e — com um clique de aprovação — publica esse resumo como comentário real na issue.
+Painel fullstack que lê issues longas do GitHub — título, descrição e todos os comentários — e devolve uma nota de prioridade de 1 a 10 com um resumo curto. Se a análise fizer sentido, dá pra publicar esse resumo como comentário de verdade na issue, com um clique.
 
-## 🛠️ Tecnologias
+## Tecnologias
 
-| Categoria | Tecnologia |
-|---|---|
-| Front-End | Next.js 16 (App Router), React, TypeScript, Tailwind CSS |
-| Back-End | Next.js API Route (Node.js), TypeScript |
-| IA | Google Gemini API (`@google/genai`, modelo `gemini-3.5-flash-lite`) |
-| Dados | GitHub API (`@octokit/rest`) |
+- Front-end: Next.js 16 (App Router), React, TypeScript, Tailwind
+- Back-end: API Routes do próprio Next.js
+- IA: API do Gemini (`@google/genai`, modelo gemini-3.5-flash-lite)
+- Dados: API do GitHub via Octokit
 
-## 🗺️ Como funciona
+## Como funciona
 
-1. O front-end (`src/app/page.tsx`) envia `owner`, `repo` e `issue_number` para a API.
-2. A API (`src/app/api/analyze/route.ts`) usa o `GITHUB_PAT` pra buscar a issue e todos os comentários via Octokit.
-3. O texto completo (issue + comentários) é enviado pro Gemini, que devolve um JSON estruturado: `resumo`, `prioridade` (1-10) e `justificativa`.
-4. O front-end exibe o resultado no dashboard.
-5. **Opcional, com aprovação manual:** o botão "Postar este resumo como comentário na issue" chama `src/app/api/comment/route.ts`, que publica o resumo formatado como um comentário de verdade na issue via Octokit. Nada é postado automaticamente — só ao clicar.
-6. **Automação total (webhook):** `.github/workflows/auto-triage.yml` dispara sozinho toda vez que uma issue nova é aberta neste repositório — chama o app publicado na Vercel (`/api/analyze` → `/api/comment`) e posta o comentário sem nenhuma intervenção humana. É o ciclo completo: issue aberta → analisada → comentada, tudo automático.
+O front-end manda owner, repo e número da issue pra `/api/analyze`. Essa rota busca a issue inteira e os comentários usando um token do GitHub, monta um prompt com tudo isso e manda pro Gemini, que devolve um JSON com resumo, prioridade e justificativa. O front-end mostra esse resultado na tela.
 
-## 🚀 Publicado
+Se eu quiser, tem um botão pra publicar aquele resumo como comentário na issue — isso chama `/api/comment`, que usa o mesmo token (mas com permissão de escrita) pra postar de verdade. Nada acontece sozinho aqui, só quando clico.
 
-O app está no ar em produção via Vercel: **https://ai-issue-buddy.vercel.app**
+Tem também um workflow no GitHub Actions (`.github/workflows/auto-triage.yml`) que dispara automaticamente toda vez que uma issue nova é aberta nesse repositório — ele chama o app publicado na Vercel e faz o ciclo completo sozinho: analisa e comenta sem eu precisar abrir nada.
 
-## ⚙️ Rodando localmente
+## No ar
 
-### Pré-requisitos
-- Node.js e npm
-- Uma chave da [Gemini API](https://aistudio.google.com/apikey) (gratuita)
-- Um [GitHub Personal Access Token](https://github.com/settings/tokens) fine-grained. Duas opções:
-  - **Só analisar (sem postar comentário):** acesso **"Public repositories" (read-only)** já é suficiente.
-  - **Analisar + postar comentário:** acesso **"Only select repositories"**, selecionando os repositórios onde você quer permitir postar, com a permissão **Issues: Read and write** (Metadata: Read-only vem junto automaticamente). Sem isso, o botão de comentar retorna erro 403 "Resource not accessible by personal access token".
+https://ai-issue-buddy.vercel.app
 
-### Instalação
+## Rodando localmente
+
+Precisa de Node, npm, uma chave da API do Gemini (grátis, em aistudio.google.com/apikey) e um token do GitHub.
+
+Pro token, duas opções dependendo do que você quer fazer: se é só pra analisar, um token fine-grained com acesso "Public repositories" (somente leitura) já resolve. Se quiser também postar comentário, precisa escolher os repositórios específicos onde você tem permissão e dar acesso de leitura e escrita em Issues — sem isso o botão de comentar retorna 403.
+
 ```bash
 npm install
 ```
 
-### Configuração
-Copie `.env.local.example` para `.env.local` e preencha com suas chaves:
-```env
+Copie `.env.local.example` pra `.env.local` e preencha:
+
+```
 GEMINI_API_KEY=sua_chave_aqui
 GITHUB_PAT=seu_token_aqui
 ```
 
-### Iniciar
 ```bash
 npm run dev
 ```
-🌐 Acesse http://localhost:3000
 
-### Testando
-No dashboard, use um exemplo público qualquer, ex:
-- Repositório: `vercel/next.js`
-- Issue: `69229`
+Acessa localhost:3000. Pra testar, um exemplo qualquer serve — usei bastante o repositório vercel/next.js, issue 69229, durante o desenvolvimento.
 
-## 🔑 API
+## API
 
 `POST /api/analyze`
 ```json
 { "owner": "vercel", "repo": "next.js", "issue_number": 69229 }
 ```
-Resposta:
+devolve
 ```json
 {
   "issue": { "owner": "vercel", "repo": "next.js", "numero": 69229, "titulo": "...", "totalComentarios": 3 },
@@ -74,7 +62,7 @@ Resposta:
 ```json
 { "owner": "Lockizao", "repo": "meu-repo", "issue_number": 2, "resumo": "...", "prioridade": 1, "justificativa": "..." }
 ```
-Resposta:
+devolve
 ```json
 { "ok": true, "url": "https://github.com/Lockizao/meu-repo/issues/2#issuecomment-..." }
 ```
